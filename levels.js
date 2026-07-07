@@ -26,7 +26,7 @@ const TERMINALS = [
   },
   {
     id: 1,
-    x: 22,
+    x: 17,
     theme: "条件分岐",
     desc: "if文でHPによって表示を変えるコード。コロンやインデントを消すとどうなる？",
     code: 'hp = 70\nif hp > 50:\n    print("元気です")\nelse:\n    print("休みましょう")\n',
@@ -34,7 +34,7 @@ const TERMINALS = [
   },
   {
     id: 2,
-    x: 38,
+    x: 33,
     theme: "関数",
     desc: "2つの数を足す関数。数字の代わりに文字列を渡したら？",
     code: 'def add(a, b):\n    return a + b\n\nprint(add(2, 3))\n',
@@ -42,7 +42,7 @@ const TERMINALS = [
   },
   {
     id: 3,
-    x: 54,
+    x: 50,
     theme: "データ構造",
     desc: "リストと辞書を使うコード。無い番号や無いキーを指定したら？ .pushを呼んだら？",
     code: 'items = ["sword", "shield", "herb"]\nstock = {"sword": 1, "herb": 3}\nprint(len(items))\nprint(items[0])\nprint(stock["herb"])\n',
@@ -53,52 +53,52 @@ const TERMINALS = [
 // バッジ定義（10種）
 const BADGES = [
   {
-    error: "SyntaxError", name: "構文崩壊者", rarity: "Common",
+    error: "SyntaxError", name: "構文崩壊者", rarity: "Common", bestTerminal: null,
     hint: "括弧やコロンなど、文法の一部を消してみよう",
     lesson: "SyntaxError：Pythonが文として読めないコードで出るエラー。括弧の閉じ忘れやコロン抜けが定番。",
   },
   {
-    error: "IndentationError", name: "インデントの反逆者", rarity: "Common",
+    error: "IndentationError", name: "インデントの反逆者", rarity: "Common", bestTerminal: 1,
     hint: "行頭の字下げを消したり、余計に増やしてみよう",
     lesson: "IndentationError：字下げの深さがおかしいと出るエラー。Pythonではインデントが文法の一部。",
   },
   {
-    error: "NameError", name: "幽霊変数使い", rarity: "Common",
+    error: "NameError", name: "幽霊変数使い", rarity: "Common", bestTerminal: null,
     hint: "存在しない変数名を呼び出してみよう",
     lesson: "NameError：定義されていない名前を呼ぶと出るエラー。変数名の打ち間違いで最もよく遭遇する。",
   },
   {
-    error: "TypeError", name: "型の反乱軍", rarity: "Common",
+    error: "TypeError", name: "型の反乱軍", rarity: "Common", bestTerminal: 2,
     hint: "数値と文字列を混ぜて計算させてみよう",
     lesson: "TypeError：型が合わない操作をすると出るエラー。数値と文字列の足し算などが典型。",
   },
   {
-    error: "IndexError", name: "境界突破者", rarity: "Uncommon",
+    error: "IndexError", name: "境界突破者", rarity: "Uncommon", bestTerminal: 3,
     hint: "リストの長さより大きい番号を指定してみよう",
     lesson: "IndexError：リストの範囲外の位置を読むと出るエラー。番号は0から始まることも思い出そう。",
   },
   {
-    error: "KeyError", name: "鍵なき扉の探索者", rarity: "Uncommon",
+    error: "KeyError", name: "鍵なき扉の探索者", rarity: "Uncommon", bestTerminal: null,
     hint: "辞書に存在しないキーで開けようとしてみよう",
     lesson: "KeyError：辞書に無いキーを指定すると出るエラー。キーの綴り間違いでよく起きる。",
   },
   {
-    error: "ImportError", name: "輸入禁止令の違反者", rarity: "Uncommon",
+    error: "ImportError", name: "輸入禁止令の違反者", rarity: "Uncommon", bestTerminal: null,
     hint: "存在しないモジュールをimportしてみよう",
     lesson: "ImportError：読み込めないモジュールを指定すると出るエラー。モジュール名の打ち間違いが典型。",
   },
   {
-    error: "ValueError", name: "値の錬金術師", rarity: "Rare",
+    error: "ValueError", name: "値の錬金術師", rarity: "Rare", bestTerminal: null,
     hint: "数字ではない文字列をint()で数値に変えようとしてみよう",
     lesson: "ValueError：型は合っていても値が不正なときに出るエラー。int(\"abc\")が代表例。",
   },
   {
-    error: "AttributeError", name: "属性迷宮の探索者", rarity: "Rare",
+    error: "AttributeError", name: "属性迷宮の探索者", rarity: "Rare", bestTerminal: 3,
     hint: "リストに存在しないメソッド（.pushなど）を呼んでみよう",
     lesson: "AttributeError：その型に無いメソッドや属性を呼ぶと出るエラー。listにpush()は無い（appendが正解）。",
   },
   {
-    error: "ZeroDivisionError", name: "ゼロ除算の勇者", rarity: "Epic",
+    error: "ZeroDivisionError", name: "ゼロ除算の勇者", rarity: "Epic", bestTerminal: null,
     hint: "何かを0で割ってみよう",
     lesson: "ZeroDivisionError：0で割ると出るエラー。数学でもプログラムでも、ゼロ除算は定義できない。",
   },

@@ -738,11 +738,21 @@ document.getElementById("btn-hint").addEventListener("click", () => {
       `<span class="ok">すべてのバッジを集めた。もうヒントは必要ない。</span>`;
     return;
   }
-  const b = missing[Math.floor(Math.random() * missing.length)];
-  ui.resultBody.innerHTML =
-    `<span class="note">ヒント（??? のうちの1つ）</span>` +
-    `<pre>${escapeHTML(b.hint)}</pre>` +
-    `<span class="note">書き換えたら Ctrl+Enter で実行。失敗しても「修復」でいつでも戻せる。</span>`;
+  // 今いる端末で出せるバッジのヒントを優先する
+  const here = missing.filter((b) => b.bestTerminal === null || b.bestTerminal === currentTerminal.id);
+  if (here.length > 0) {
+    const b = here[Math.floor(Math.random() * here.length)];
+    ui.resultBody.innerHTML =
+      `<span class="note">この端末で出せるエラーのヒント</span>` +
+      `<pre>${escapeHTML(b.hint)}</pre>` +
+      `<span class="note">書き換えたら Ctrl+Enter で実行。失敗しても「修復」でいつでも戻せる。</span>`;
+  } else {
+    // ここでは出しにくい → 行き先だけ教える（中身は明かさない）
+    const dests = [...new Set(missing.map((b) => b.bestTerminal).filter((v) => v !== null))]
+      .map((id) => `端末${id + 1}「${TERMINALS[id].theme}」`);
+    ui.resultBody.innerHTML =
+      `<span class="note">残りのエラーは、この端末よりも ${dests.join("・")} のほうが出しやすい。移動してみよう。</span>`;
+  }
 });
 document.getElementById("btn-repair").addEventListener("click", () => {
   if (!currentTerminal) return;
@@ -878,7 +888,7 @@ function renderCollection() {
         <canvas class="badge-icon" data-i="${i}" data-got="${got}" width="32" height="32"></canvas>
         <div>
           <div class="badge-name">${got ? escapeHTML(b.name) : "???"}</div>
-          <div class="badge-info">${got ? escapeHTML(b.error) + " — " + escapeHTML(b.lesson) : "ヒント：" + escapeHTML(b.hint)}</div>
+          <div class="badge-info">${got ? escapeHTML(b.error) + " — " + escapeHTML(b.lesson) : "まだ見ぬエラー。端末でコードを壊して探そう"}</div>
           ${got ? `<div class="badge-more">クリックで取得の記録を見る</div>` : ""}
         </div>
         <div class="badge-rarity rarity-${b.rarity.toLowerCase()}">${b.rarity}</div>
