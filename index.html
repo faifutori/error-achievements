@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エラー実績解除</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="640" height="360"></canvas>
+
+  <!-- HUD（バッジ数と経過時間のみ） -->
+  <div id="hud">
+    <span id="hud-badges">BADGE 0/10</span>
+    <span id="hud-time">00:00</span>
+  </div>
+
+  <!-- 実績解除バナー -->
+  <div id="toast" class="hidden"></div>
+
+  <!-- コードパネル -->
+  <div id="panel" class="hidden">
+    <div id="panel-inner">
+      <div id="panel-title">TERMINAL</div>
+      <p id="panel-desc"></p>
+      <div id="editor-wrap">
+        <div id="gutter"></div>
+        <div id="editor-stack">
+          <div id="highlight"></div>
+          <textarea id="code" spellcheck="false" autocomplete="off"></textarea>
+        </div>
+      </div>
+      <div id="panel-buttons">
+        <button id="btn-run">実行（Ctrl+Enter）</button>
+        <button id="btn-hint">ヒント</button>
+        <button id="btn-repair">修復</button>
+        <button id="btn-close">閉じる（Esc）</button>
+      </div>
+      <div id="result" class="hidden">
+        <div id="result-body"></div>
+        <details id="traceback-box" class="hidden">
+          <summary>Traceback（原文）</summary>
+          <pre id="traceback"></pre>
+        </details>
+      </div>
+      <div id="py-status"></div>
+    </div>
+  </div>
+
+  <!-- 実績コレクション（Tab） -->
+  <div id="collection" class="hidden">
+    <div id="collection-inner">
+      <div id="collection-title">BADGE COLLECTION</div>
+      <div id="badge-list"></div>
+      <div id="log-summary"></div>
+      <div id="collection-buttons">
+        <button id="btn-savelog">ログをJSONで保存</button>
+        <button id="btn-collection-close">閉じる（Tab）</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- クリア演出 -->
+  <div id="clear" class="hidden">
+    <div id="clear-text">ALL ERRORS UNLOCKED</div>
+    <div id="clear-sub">4つのエラーをすべて解読した。壊すことは、理解することだった。</div>
+  </div>
+</div>
+
+<script src="levels.js"></script>
+<script src="python.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
