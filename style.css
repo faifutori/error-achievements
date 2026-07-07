@@ -347,3 +347,27 @@ canvas#game {
 .rarity-uncommon { color: var(--accent); }
 .rarity-rare { color: var(--glow); }
 .rarity-epic { color: var(--gold); }
+
+/* サウンド設定 */
+#sound-settings {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 4px 0 14px;
+  padding: 8px 12px;
+  background: var(--bg);
+  font-size: 13px;
+}
+#sound-settings .sound-title {
+  font-family: "DotGothic16", sans-serif;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+#sound-settings label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+#sound-settings input[type="range"] { width: 110px; accent-color: #4ec9b0; }
+#sound-settings input[type="checkbox"] { accent-color: #4ec9b0; }

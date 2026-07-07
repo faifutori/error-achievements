@@ -57,8 +57,15 @@
       <div id="collection-title">BADGE COLLECTION</div>
       <div id="badge-list"></div>
       <div id="log-summary"></div>
+      <div id="sound-settings">
+        <span class="sound-title">SOUND</span>
+        <label><input type="checkbox" id="chk-bgm"> BGM</label>
+        <label><input type="checkbox" id="chk-sfx"> 効果音</label>
+        <label>音量 <input type="range" id="vol-slider" min="0" max="100" value="60"></label>
+      </div>
       <div id="collection-buttons">
         <button id="btn-savelog">ログをJSONで保存</button>
+        <button id="btn-savecsv">ログをCSVで保存</button>
         <button id="btn-collection-close">閉じる（Tab）</button>
       </div>
     </div>
@@ -72,6 +79,7 @@
 </div>
 
 <script src="levels.js"></script>
+<script src="sounds.js"></script>
 <script src="python.js"></script>
 <script src="game.js"></script>
 </body>

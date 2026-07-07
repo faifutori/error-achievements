@@ -51,6 +51,33 @@ function loadImage(src) {
   });
 }
 
+// 画像の透明な余白を検出して、実際に絵がある範囲だけを返す。
+// 手描き素材にありがちな「キャラの周りの余白」による位置ズレ・ブレを防ぐ
+function trimFrame(img, sx = 0, sy = 0, sw = img.width, sh = img.height) {
+  try {
+    const c = document.createElement("canvas");
+    c.width = sw; c.height = sh;
+    const cc = c.getContext("2d");
+    cc.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    const data = cc.getImageData(0, 0, sw, sh).data;
+    let minX = sw, minY = sh, maxX = -1, maxY = -1;
+    for (let y = 0; y < sh; y++) {
+      for (let x = 0; x < sw; x++) {
+        if (data[(y * sw + x) * 4 + 3] > 16) {     // ほぼ不透明なピクセルだけ
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return { img, sx, sy, w: sw, h: sh };   // 全部透明なら元のまま
+    return { img, sx: sx + minX, sy: sy + minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+  } catch (e) {
+    return { img, sx, sy, w: sw, h: sh };   // file://等でピクセルが読めない場合は元のまま
+  }
+}
+
 async function loadAssets() {
   // シート定義：[名前, シートファイル, コマ数]
   // ※PNGのサイズは自由。実サイズを読み取り、ゲーム内で規定サイズに縮小する
@@ -62,14 +89,14 @@ async function loadAssets() {
     const sheet = await loadImage("assets/" + file);
     if (sheet) {
       const fw = sheet.width / n, fh = sheet.height;
-      assets[name] = Array.from({ length: n }, (_, i) => ({ img: sheet, sx: i * fw, sy: 0, w: fw, h: fh }));
+      assets[name] = Array.from({ length: n }, (_, i) => trimFrame(sheet, i * fw, 0, fw, fh));
       continue;
     }
-    // 個別ファイル player-1.png ... を探す（サイズは画像の実寸を使う）
+    // 個別ファイル player-1.png ... を探す（余白は自動トリミング）
     const frames = [];
     for (let i = 1; i <= n; i++) {
       const img = await loadImage(`assets/${name}-${i}.png`);
-      frames.push(img ? { img, sx: 0, sy: 0, w: img.width, h: img.height } : null);
+      frames.push(img ? trimFrame(img) : null);
     }
     assets[name] = frames.some(Boolean) ? frames : null;
   }
@@ -88,7 +115,7 @@ async function loadAssets() {
   assets.badges = [];
   for (let i = 1; i <= BADGES.length; i++) {
     const img = await loadImage(`assets/badge-${i}.png`);
-    assets.badges.push(img ? { img, sx: 0, sy: 0, w: img.width, h: img.height } : null);
+    assets.badges.push(img ? trimFrame(img) : null);
   }
   // 背景
   assets.bg = await loadImage("assets/bg_sky.png");
@@ -198,23 +225,69 @@ const particles = [];
 let cleared = false;
 let nearTerminal = null;
 
+// 参加者ID（ブラウザごとに固定。研究・観察用）
+function getParticipantId() {
+  try {
+    let id = localStorage.getItem("ea-participant");
+    if (!id) {
+      id = "P-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+      localStorage.setItem("ea-participant", id);
+    }
+    return id;
+  } catch (e) {
+    return "P-" + Math.random().toString(36).slice(2, 10).toUpperCase();
+  }
+}
+
+// レアリティごとのスコア（ログ集計用。HUDには出さない）
+const RARITY_SCORE = { Common: 10, Uncommon: 20, Rare: 30, Epic: 50 };
+
 // 行動ログ
 const log = {
+  participantId: getParticipantId(),
   startedAt: new Date().toISOString(),
   runs: 0,
   okRuns: 0,
   errorRuns: 0,
   errorCounts: {},          // 種別ごとの発生回数
   unknownErrors: [],        // バッジ対象外のエラー発見記録
-  editEvents: 0,
+  editEvents: 0,            // エディタでの編集イベント数（input発火数）
+  keyInputs: 0,             // キー入力の総数（ゲーム＋エディタ）
+  score: 0,                 // バッジのレアリティに応じた合計スコア
   badges: [],
   events: [],               // 実行ログ（時刻・端末・結果）
+  runTimestamps: [],        // 実行時刻（ms）。実行間隔の統計に使う
+  idleGaps: [],             // 1秒以上の無操作時間（ms）の一覧
 };
+
+// 無操作時間の計測（キー・マウスの間隔を記録する）
+let lastActivity = performance.now();
+function markActivity() {
+  const now = performance.now();
+  const gap = now - lastActivity;
+  if (gap >= 1000) log.idleGaps.push(Math.round(gap));
+  lastActivity = now;
+}
+window.addEventListener("mousedown", markActivity);
+
+// 統計ヘルパー：最短・最長・平均・中央値（秒）
+function statsOf(msArray) {
+  if (!msArray.length) return null;
+  const sec = msArray.map((v) => v / 1000).sort((a, b) => a - b);
+  const sum = sec.reduce((a, b) => a + b, 0);
+  const mid = Math.floor(sec.length / 2);
+  const median = sec.length % 2 ? sec[mid] : (sec[mid - 1] + sec[mid]) / 2;
+  const r = (v) => Math.round(v * 100) / 100;
+  return { count: sec.length, min: r(sec[0]), max: r(sec[sec.length - 1]), mean: r(sum / sec.length), median: r(median) };
+}
 
 // ---------------------------------------------------------------
 // 入力
 // ---------------------------------------------------------------
 window.addEventListener("keydown", (e) => {
+  SND.init();   // 最初の操作でオーディオを起動
+  log.keyInputs++;
+  markActivity();
   const panelOpen = !ui.panel.classList.contains("hidden");
   const collOpen = !ui.collection.classList.contains("hidden");
 
@@ -267,6 +340,7 @@ function updatePlayer() {
     player.vy = JUMP_POWER;
     player.onGround = false;
     jumpHeld = 10;
+    SND.play("jump");
   }
   if (jumpKey && jumpHeld > 0 && player.vy < 0) {
     player.vy -= 0.28;      // 押している間だけ少し浮力を足す
@@ -357,6 +431,7 @@ function spawnBadge(errorType, terminal, snapshot) {
   const index = BADGES.findIndex((b) => b.error === errorType);
   if (index < 0 || badgesUnlocked.has(errorType)) return;
   if (droppedBadges.some((b) => b.error === errorType && !b.collected)) return;
+  SND.play("descend");
   droppedBadges.push({
     error: errorType, index, snapshot,
     x: terminal.x * TILE + (Math.random() < 0.5 ? -48 : 48),
@@ -376,10 +451,12 @@ function spawnBadge(errorType, terminal, snapshot) {
 
 function collectBadge(b) {
   b.collected = true;
+  SND.play("collect");
   badgesUnlocked.add(b.error);
   if (b.snapshot) unlockRecords[b.error] = b.snapshot;
   log.badges.push({ error: b.error, at: new Date().toISOString(), record: b.snapshot ?? null });
   const def = BADGES[b.index];
+  log.score += RARITY_SCORE[def.rarity] || 10;
   showToast(`実績解除\n${def.name}（${def.error}）`, def.lesson);
   for (let i = 0; i < 20; i++) {
     particles.push({
@@ -391,7 +468,7 @@ function collectBadge(b) {
   updateHUD();
   if (badgesUnlocked.size >= BADGES.length && !cleared) {
     cleared = true;
-    setTimeout(() => ui.clear.classList.remove("hidden"), 900);
+    setTimeout(() => { SND.play("clear"); ui.clear.classList.remove("hidden"); }, 900);
     setTimeout(() => ui.clear.classList.add("hidden"), 7000);
   }
 }
@@ -461,10 +538,14 @@ function drawTerminals() {
     const frames = assets.terminal;
     if (frames && frames[t.id]) {
       const f = frames[t.id];
-      blit(f.img, f.sx, f.sy, f.w, f.h, sx, sy, 32, 48);
+      const dh = 48;
+      const dw = Math.max(8, Math.round(dh * f.w / f.h));
+      const dx = Math.round(sx + 16 - dw / 2);
+      const dy = sy + 48 - dh;
+      blit(f.img, f.sx, f.sy, f.w, f.h, dx, dy, dw, dh);
       if (active) {
         ctx.fillStyle = "rgba(212, 212, 170, 0.12)";
-        ctx.fillRect(sx, sy, 32, 48);
+        ctx.fillRect(dx, dy, dw, dh);
       }
     } else {
       drawTerminalPlaceholder(sx, sy, t.id, active, t.justBroke > 0);
@@ -530,24 +611,30 @@ function drawParticles() {
 }
 
 function drawPlayer() {
-  const sx = player.x - 5 - camera.x;   // 見た目32pxに合わせて少しずらす
-  const sy = player.y - 4 - camera.y;
   let frame = 0;
   if (!player.onGround) frame = 3;
   else if (Math.abs(player.vx) > 0) frame = 1 + (Math.floor(player.animTime / 8) % 2);
   const frames = assets.player;
   if (frames && frames[frame]) {
     const f = frames[frame];
+    // 縦48pxに合わせて縦横比を保ち、当たり判定の「足元中央」に固定する。
+    // これでコマごとの余白の違いによるブレが起きない
+    const dh = 48;
+    const dw = Math.max(8, Math.round(dh * f.w / f.h));
+    const dx = Math.round(player.x + player.w / 2 - dw / 2 - camera.x);
+    const dy = Math.round(player.y + player.h - dh - camera.y);
     ctx.save();
     if (player.facing < 0) {
-      ctx.translate(Math.round(sx) + 32, Math.round(sy));
+      ctx.translate(dx + dw, dy);
       ctx.scale(-1, 1);
-      blit(f.img, f.sx, f.sy, f.w, f.h, 0, 0, 32, 48);
+      blit(f.img, f.sx, f.sy, f.w, f.h, 0, 0, dw, dh);
     } else {
-      blit(f.img, f.sx, f.sy, f.w, f.h, Math.round(sx), Math.round(sy), 32, 48);
+      blit(f.img, f.sx, f.sy, f.w, f.h, dx, dy, dw, dh);
     }
     ctx.restore();
   } else {
+    const sx = player.x - 5 - camera.x;
+    const sy = player.y - 4 - camera.y;
     drawPlayerPlaceholder(sx, sy, frame, player.facing);
   }
 }
@@ -579,6 +666,7 @@ const ui = {
 let currentTerminal = null;
 
 function openPanel(t) {
+  SND.play("open");
   currentTerminal = t;
   paused = true;
   ui.panelTitle.textContent = `TERMINAL ${t.id + 1} — ${t.theme}`;
@@ -641,6 +729,7 @@ ui.code.addEventListener("keydown", (e) => {
 document.getElementById("btn-run").addEventListener("click", runCode);
 // ヒント：まだ取っていないバッジの出し方を1つ教える
 document.getElementById("btn-hint").addEventListener("click", () => {
+  SND.play("hint");
   const missing = BADGES.filter((b) => !badgesUnlocked.has(b.error));
   ui.result.classList.remove("hidden");
   ui.tracebackBox.classList.add("hidden");
@@ -663,6 +752,17 @@ document.getElementById("btn-repair").addEventListener("click", () => {
 });
 document.getElementById("btn-close").addEventListener("click", closePanel);
 document.getElementById("btn-savelog").addEventListener("click", saveLog);
+document.getElementById("btn-savecsv").addEventListener("click", saveCsv);
+// サウンド設定
+const chkBgm = document.getElementById("chk-bgm");
+const chkSfx = document.getElementById("chk-sfx");
+const volSlider = document.getElementById("vol-slider");
+chkBgm.checked = SND.settings.bgm;
+chkSfx.checked = SND.settings.sfx;
+volSlider.value = Math.round(SND.settings.volume * 100);
+chkBgm.addEventListener("change", () => { SND.init(); SND.setBGM(chkBgm.checked); });
+chkSfx.addEventListener("change", () => { SND.init(); SND.setSFX(chkSfx.checked); if (chkSfx.checked) SND.play("ok"); });
+volSlider.addEventListener("input", () => { SND.init(); SND.setVolume(volSlider.value / 100); });
 document.getElementById("btn-collection-close").addEventListener("click", toggleCollection);
 
 // ---------------------------------------------------------------
@@ -678,6 +778,7 @@ async function runCode() {
   running = false;
 
   log.runs++;
+  log.runTimestamps.push(Math.round(performance.now()));
   log.events.push({
     at: new Date().toISOString(),
     terminal: t.theme,
@@ -691,12 +792,14 @@ async function runCode() {
 
   if (res.ok) {
     log.okRuns++;
+    SND.play("ok");
     ui.resultBody.innerHTML =
       `<span class="ok">正常に実行できました。これが本来の動きです。</span>` +
       `<pre>${escapeHTML(res.output || "(出力なし)")}</pre>` +
       `<span class="note">壊さないと、何も始まらない。</span>`;
   } else {
     log.errorRuns++;
+    SND.play("error");
     log.errorCounts[res.errorType] = (log.errorCounts[res.errorType] || 0) + 1;
     t.justBroke = 40;   // 端末画面を一瞬エラー色に
 
@@ -817,9 +920,14 @@ function renderCollection() {
   });
   // ログ要約
   const secs = Math.floor((performance.now() - startTime) / 1000);
+  const iv = [];
+  for (let i = 1; i < log.runTimestamps.length; i++) iv.push(log.runTimestamps[i] - log.runTimestamps[i - 1]);
+  const ivs = statsOf(iv);
   ui.logSummary.innerHTML =
-    `実行 ${log.runs}回（正常 ${log.okRuns} / エラー ${log.errorRuns}）　編集 ${log.editEvents}回<br>` +
+    `ID：${log.participantId}　スコア：${log.score}<br>` +
+    `実行 ${log.runs}回（正常 ${log.okRuns} / エラー ${log.errorRuns}）　編集 ${log.editEvents}回　キー入力 ${log.keyInputs}回<br>` +
     `エラー内訳：${Object.entries(log.errorCounts).map(([k, v]) => `${k}×${v}`).join("、") || "なし"}<br>` +
+    (ivs ? `実行間隔：最短${ivs.min}秒 / 最長${ivs.max}秒 / 平均${ivs.mean}秒 / 中央値${ivs.median}秒<br>` : "") +
     (log.unknownErrors.length
       ? `未知のエラー発見：${log.unknownErrors.map((u) => u.errorType).join("、")}<br>` : "") +
     `セッション時間 ${fmtTime(secs)}`;
@@ -846,11 +954,37 @@ window.__tmpDraw = (cctx, index) => {
 };
 
 function saveLog() {
+  markActivity();   // 保存時点までの無操作も締める
+  // 実行間隔（連続する実行の間の時間）
+  const intervals = [];
+  for (let i = 1; i < log.runTimestamps.length; i++) {
+    intervals.push(log.runTimestamps[i] - log.runTimestamps[i - 1]);
+  }
   const data = {
-    ...log,
+    participantId: log.participantId,
+    startedAt: log.startedAt,
+    endedAt: new Date().toISOString(),
     sessionSeconds: Math.floor((performance.now() - startTime) / 1000),
-    badgesUnlocked: [...badgesUnlocked],
-    savedAt: new Date().toISOString(),
+
+    runs: log.runs,                       // 実行回数（合計）
+    okRuns: log.okRuns,                   // 正常実行回数
+    errorRuns: log.errorRuns,             // エラー実行回数
+    keyInputs: log.keyInputs,             // キー入力回数（総数）
+    editEvents: log.editEvents,           // 編集イベント数
+    errorCounts: log.errorCounts,         // エラー種別ごとの発生回数
+    unknownErrors: log.unknownErrors,
+
+    badgesUnlocked: [...badgesUnlocked],  // 取得バッジ
+    badgeTypeCount: badgesUnlocked.size,  // 取得バッジ種類数
+    score: log.score,                     // スコア合計（Common10/Uncommon20/Rare30/Epic50）
+
+    runIntervalStats: statsOf(intervals),     // 実行間隔（秒）最短・最長・平均・中央値
+    idleStats: statsOf(log.idleGaps),         // 無操作時間（秒・1秒以上のみ）同上
+    runIntervalsMs: intervals,                // 生データ（ms）
+    idleGapsMs: log.idleGaps,
+
+    badges: log.badges,                   // 取得の記録（コード・エラー文つき）
+    events: log.events,                   // 実行イベントの時系列
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -858,6 +992,67 @@ function saveLog() {
   a.download = "error-achievements-log.json";
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// ---- CSV保存（Excelで開けるようBOM付きUTF-8） ----
+function csvEscape(v) {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadCsv(filename, rows) {
+  const text = "\uFEFF" + rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
+  const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function saveCsv() {
+  markActivity();
+  const intervals = [];
+  for (let i = 1; i < log.runTimestamps.length; i++) {
+    intervals.push(log.runTimestamps[i] - log.runTimestamps[i - 1]);
+  }
+  const ivs = statsOf(intervals);
+  const ids = statsOf(log.idleGaps);
+  const endedAt = new Date().toISOString();
+  const sessionSeconds = Math.floor((performance.now() - startTime) / 1000);
+
+  // 1) サマリー：1参加者=1行。複数人のファイルを縦に結合して分析できる形
+  const header = [
+    "participantId", "startedAt", "endedAt", "sessionSeconds",
+    "runs", "okRuns", "errorRuns", "keyInputs", "editEvents",
+    "badgeTypeCount", "score", "badgesUnlocked",
+  ];
+  const row = [
+    log.participantId, log.startedAt, endedAt, sessionSeconds,
+    log.runs, log.okRuns, log.errorRuns, log.keyInputs, log.editEvents,
+    badgesUnlocked.size, log.score, [...badgesUnlocked].join(";"),
+  ];
+  // エラー種別ごとの回数（全10種を固定列で）
+  for (const b of BADGES) {
+    header.push("count_" + b.error);
+    row.push(log.errorCounts[b.error] || 0);
+  }
+  header.push("unknownErrors");
+  row.push(log.unknownErrors.map((u) => u.errorType).join(";"));
+  // 実行間隔・無操作時間の統計（秒）
+  for (const [prefix, st] of [["runInterval", ivs], ["idle", ids]]) {
+    for (const k of ["count", "min", "max", "mean", "median"]) {
+      header.push(prefix + "_" + k);
+      row.push(st ? st[k] : "");
+    }
+  }
+  downloadCsv(`log-summary-${log.participantId}.csv`, [header, row]);
+
+  // 2) イベント時系列：1実行=1行
+  const evRows = [["participantId", "at", "terminal", "ok", "errorType", "engine"]];
+  for (const e of log.events) {
+    evRows.push([log.participantId, e.at, e.terminal, e.ok ? 1 : 0, e.errorType || "", e.engine]);
+  }
+  downloadCsv(`log-events-${log.participantId}.csv`, evRows);
 }
 
 function fmtTime(secs) {
