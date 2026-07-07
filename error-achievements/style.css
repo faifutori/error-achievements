@@ -1,0 +1,349 @@
+/* エラー実績解除 — スタイル
+   世界観：コードエディタのダークテーマの中を歩く */
+
+:root {
+  --bg: #1e1e2e;
+  --panel: #2a2a3c;
+  --ground: #3c4048;
+  --ground-top: #565c66;
+  --accent: #4ec9b0;
+  --glow: #d4d4aa;
+  --error: #f48771;
+  --gold: #dcb67a;
+  --text: #c9d1d9;
+  --dim: #8a91a0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Noto Sans JP", sans-serif;
+  overflow: hidden;
+}
+
+#game-wrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas#game {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: var(--bg);
+}
+
+/* ---------- HUD ---------- */
+#hud {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px;
+  font-family: "DotGothic16", sans-serif;
+  font-size: 16px;
+  color: var(--dim);
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+#hud-badges { color: var(--glow); }
+
+/* ---------- 実績解除バナー ---------- */
+#toast {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "DotGothic16", sans-serif;
+  font-size: 18px;
+  color: var(--gold);
+  background: rgba(30, 30, 46, 0.92);
+  border: 2px solid var(--gold);
+  padding: 10px 22px;
+  white-space: pre-line;
+  text-align: center;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 30;
+}
+#toast .sub {
+  display: block;
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 12px;
+  color: var(--text);
+  margin-top: 6px;
+}
+
+/* ---------- コードパネル ---------- */
+#panel {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 32, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+#panel-inner {
+  width: min(680px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  padding: 16px 20px;
+}
+#panel-title {
+  font-family: "DotGothic16", sans-serif;
+  color: var(--accent);
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+#panel-desc {
+  font-size: 13px;
+  color: var(--dim);
+  margin: 6px 0 10px;
+}
+
+/* エディタ：gutter（変更マーカー）+ 背景ハイライト + textarea を重ねる */
+#editor-wrap {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid #3c4048;
+}
+#gutter {
+  width: 18px;
+  padding: 8px 0;
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 14px;
+  line-height: 21px;
+  text-align: center;
+  color: var(--error);
+  user-select: none;
+  overflow: hidden;
+}
+#editor-stack {
+  position: relative;
+  flex: 1;
+}
+#highlight, #code {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 14px;
+  line-height: 21px;
+  padding: 8px 10px;
+  margin: 0;
+  white-space: pre;
+  tab-size: 4;
+}
+#highlight {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  overflow: hidden;
+  pointer-events: none;
+}
+#highlight .line { display: block; height: 21px; }
+#highlight .line.changed { background: rgba(244, 135, 113, 0.14); }
+#code {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 190px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  outline: none;
+  resize: vertical;
+  caret-color: var(--accent);
+}
+
+#panel-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+#panel-buttons button, #collection-buttons button {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--dim);
+  padding: 6px 14px;
+  cursor: pointer;
+}
+#panel-buttons button:hover, #collection-buttons button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+#btn-run { border-color: var(--accent); color: var(--accent); }
+
+#result {
+  margin-top: 12px;
+  border-top: 1px solid #3c4048;
+  padding-top: 10px;
+  font-size: 13px;
+}
+#result-body pre {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 13px;
+  background: var(--bg);
+  padding: 8px 10px;
+  margin: 6px 0;
+  white-space: pre-wrap;
+}
+#result-body .ok { color: var(--accent); }
+#result-body .err { color: var(--error); }
+#result-body .note { color: var(--dim); font-size: 12px; }
+#traceback-box { margin-top: 6px; }
+#traceback-box summary {
+  cursor: pointer;
+  color: var(--dim);
+  font-size: 12px;
+}
+#traceback {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  color: var(--error);
+  background: var(--bg);
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+#py-status {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ---------- コレクション画面 ---------- */
+#collection {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 20, 32, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 25;
+}
+#collection-inner {
+  width: min(620px, 92vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 2px solid var(--gold);
+  padding: 18px 22px;
+}
+#collection-title {
+  font-family: "DotGothic16", sans-serif;
+  color: var(--gold);
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+.badge-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid #3c4048;
+}
+.badge-icon {
+  width: 40px;
+  height: 40px;
+  image-rendering: pixelated;
+  flex: none;
+}
+.badge-name {
+  font-family: "DotGothic16", sans-serif;
+  font-size: 16px;
+  color: var(--gold);
+}
+.badge-row.locked .badge-name { color: var(--dim); }
+.badge-info { font-size: 12px; color: var(--dim); }
+.badge-rarity {
+  font-family: "DotGothic16", sans-serif;
+  font-size: 12px;
+  color: var(--dim);
+  margin-left: auto;
+  flex: none;
+}
+.badge-row.clickable { cursor: pointer; }
+.badge-row.clickable:hover .badge-name { color: var(--glow); }
+.badge-more { font-size: 11px; color: var(--accent); margin-top: 2px; }
+.badge-record {
+  background: var(--bg);
+  border-left: 2px solid var(--gold);
+  margin: 0 0 8px 54px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.record-head {
+  font-family: "DotGothic16", sans-serif;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.record-label { color: var(--dim); }
+.record-code {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  color: var(--text);
+  background: #191926;
+  padding: 6px 8px;
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+.record-msg {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  color: var(--error);
+}
+
+#log-summary {
+  font-size: 12px;
+  color: var(--dim);
+  margin: 12px 0;
+  line-height: 1.8;
+}
+#collection-buttons { display: flex; gap: 8px; }
+
+/* ---------- クリア演出 ---------- */
+#clear {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 30, 46, 0.8);
+  z-index: 40;
+  animation: clearfade 1.2s ease;
+  pointer-events: none;
+}
+@keyframes clearfade { from { opacity: 0; } to { opacity: 1; } }
+#clear-text {
+  font-family: "DotGothic16", sans-serif;
+  font-size: 42px;
+  color: var(--gold);
+  letter-spacing: 4px;
+  text-shadow: 0 0 18px rgba(220, 182, 122, 0.5);
+}
+#clear-sub {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.hidden { display: none !important; }
+
+/* レアリティごとの色 */
+.rarity-common { color: var(--dim); }
+.rarity-uncommon { color: var(--accent); }
+.rarity-rare { color: var(--glow); }
+.rarity-epic { color: var(--gold); }
